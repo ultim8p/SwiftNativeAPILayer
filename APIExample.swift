@@ -36,12 +36,11 @@ class APIRequest {
         
         if let parms = parms {
             let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .mongoStrategy
             if let jsonBody = try? encoder.encode(parms) {
                 request.httpBody = jsonBody
             } else {
                 let error = NSError(domain: "com.rise.risefit", code: 0, userInfo: [NSLocalizedDescriptionKey: "ERR: RIRequest Unable to parse params to JSON"])
-                var resObj: RIResp<R> = RIResp()
+                var resObj: APIResponse<R> = APIResponse()
                 resObj.error = error
                 handler?(resObj)
             }
@@ -53,7 +52,7 @@ class APIRequest {
         
         let task = session.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
-                var resObj: RIResp<R> = RIResp()
+                var resObj: APIResponse<R> = APIResponse()
                 let isSuccess = response?.isSuccess() ?? false
                 resObj.setFor(status: response?.statusCode() ?? 0)
                 
@@ -69,11 +68,11 @@ class APIRequest {
                         else {
                             let errObj = try decoder.decode(RFApiError.self, from: data)
                             resObj.apiErr = errObj
-                            print("RIReq: Assigning api error Url: \(url)")
+                            print("ApiRequest: Assigning api error Url: \(url)")
                             errObj.printObj()
                         }
                     } catch {
-                        print("RIReqErr: Error parsing res \(error)")
+                        print("ApiRequestErr: Error parsing res \(error)")
                         resObj.error = error
                     }
                     handler?(resObj)
@@ -81,7 +80,7 @@ class APIRequest {
                     resObj.error = error
                     handler?(resObj)
                 } else {
-                    let unknownError = NSError(domain: "api.request.error", code: 0, userInfo: [NSLocalizedDescriptionKey: "ERR: RIRequest DataTask Unknown error"])
+                    let unknownError = NSError(domain: "api.request.error", code: 0, userInfo: [NSLocalizedDescriptionKey: "ERR: ApiRequest DataTask Unknown error"])
                     resObj.error = unknownError
                     handler?(resObj)
                 }
