@@ -17,11 +17,11 @@ import Foundation
 /// - parameter handler: Function called after the request completes the DataTask.
 /// There are many advantages on having a single API request method and controlling what happens on this method. Ex: We can add authentication headers or parameters that all requests need without having lots of duplicated call on each API call.
 class APIRequest {
-    func performRequest<R: Codable, P: Codable>(rest: R.Type, url: String, parms: P?, heads: [String: String]?, method: RIRequestMethod, handler: APIResponse<R>.RIRequestHandler?) -> URLSessionDataTask {
+    func performRequest<R: Codable, P: Codable>(rest: R.Type, url: String, parms: P?, heads: [String: String]?, method: RIRequestMethod, handler: APIResponse<R>.APIRequestHandler??) -> URLSessionDataTask {
         
         let encodedUrl = url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-        let requestUrl: URL = URL.init(string: encodedUrl!)!
-        var request: URLRequest = URLRequest.init(url: requestUrl)
+        let requestUrl: URL = URL(string: encodedUrl!)!
+        var request: URLRequest = URLRequest(url: requestUrl)
         request.httpMethod = method.rawValue
         
         if let heads = heads {
@@ -53,8 +53,7 @@ class APIRequest {
         let task = session.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 var resObj: APIResponse<R> = APIResponse()
-                let isSuccess = response?.isSuccess() ?? false
-                resObj.setFor(status: response?.statusCode() ?? 0)
+                let isSuccess = response.statusCode().isSuccessCode()
                 
                 if let data = data {
                     let decoder = JSONDecoder()
@@ -99,7 +98,7 @@ class APIRequest {
 /// in case of an error, the error parameter will contain the API error.
 struct APIResponse<T: Codable> {
     
-    typealias RIRequestHandler = (_ response: RIResp<T>) -> Void
+    typealias APIRequestHandler = (_ response: RIResp<T>) -> Void
     
     var data: T?
     var error: Error?
@@ -121,21 +120,34 @@ extension Model {
     }
 }
 
-
-
 /// Example of a User model in our project.
 /// Note: This is all the implementation we need in order to convert to JSON data, by extending Model: Codable protocol we inherit the ability to convert to JSON object.
 /// Node: We can add nested models really easy as long as the objects conform to Codable as well.
 struct User: Model {
+    
     var id: String?
+    
     var name: String?
-    
     var friends: [User]?
-    
     var userType: UserType?
+    
 }
 
 enum UserType: String, Codable {
     case free
     case premium
+}
+
+
+/// Sample method for performing a GET/user request:
+static func getSelf(_ handler: APIResponse<User>.APIRequestHandler?) -> URLSessionDataTask? {
+    let url = Routes.user()
+    return FJApi.get(rest: User.self, url: url) { (respnse) in
+        if let fetchedUser = response.data {
+            /// TODO: Do something with fetched user.
+        } else {
+            /// There was an error fetching the user. Should handler response.error
+        }
+        handler?(res)
+    }
 }
